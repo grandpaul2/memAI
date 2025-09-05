@@ -1,9 +1,19 @@
 # memAI - Memory-Enhanced AI Assistant
 # .gitignore file
 
+# Development folders (keep repo clean for end users)
+archive/
+tests/
+docs/
+
 # Memory files - user conversations (sensitive data)
 memory/
 *.json.bak
+
+# Development artifacts - keep repo focused on core application
+docs/
+tests/
+archive/
 
 # Python
 __pycache__/
@@ -65,3 +75,8 @@ tmp/
 test_output/
 test_results/
 *.test.log
+
+# Build artifacts
+build/
+dist/
+*.spec
