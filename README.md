@@ -8,7 +8,7 @@ A lightweight, single-file AI assistant with excellent conversation memory manag
 - **Adaptive Scaling**: Memory capacity scales with model context window (4k-20k tokens)
 - **Simple Interface**: Clean CLI with animated progress indicators
 - **Zero Dependencies**: Only requires Python 3.8+ and `requests` library
-- **Production Ready**: Comprehensive testing with 390+ automated scenarios
+- **Production Ready**: Single-file design, easy deployment
 
 ## Quick Start
 
@@ -41,22 +41,25 @@ python3 memai.py
 
 ```
 memAI/
-├── memai.py           # Main application (single file)
-├── requirements.txt   # Python dependencies
-├── docs/             # Documentation and project notes
-├── tests/            # Comprehensive test suite
-└── archive/          # Historical files and backups
+├── memai.py              # Main application (single file)
+├── requirements.txt      # Python dependencies  
+├── build.sh              # Linux executable builder
+├── build-windows.bat     # Windows executable builder
+└── README.md             # This file
 ```
 
-## Testing
+## Building Executables
 
-The project includes comprehensive testing:
-
+### Linux
 ```bash
-cd tests/
-python3 large_scale_test.py    # 390 automated scenarios
-python3 simple_test.py         # Quick validation
-python3 conversation_capacity.py  # Memory analysis
+./build.sh
+# Creates dist/memAI-linux (standalone executable)
+```
+
+### Windows
+```cmd
+build-windows.bat
+REM Creates dist/memAI-windows.exe (standalone executable)
 ```
 
 ## License
