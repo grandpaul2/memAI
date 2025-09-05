@@ -1,0 +1,10 @@
+# MemoryAI Requirements
+# Minimal dependencies for memory-focused AI assistant
+
+# Core dependencies
+requests>=2.31.0
+ollama>=0.1.0
+
+# Optional: Enhanced features
+colorama>=0.4.6  # For colored terminal output
+psutil>=5.9.0   # For system resource monitoring
