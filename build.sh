@@ -12,20 +12,19 @@ rm -rf build/ dist/ *.spec
 echo "🐧 Building Linux executable..."
 ~/.local/bin/pyinstaller --onefile --name memAI-linux memai.py
 
-# Build Windows executable (cross-compile attempt)
-echo "🪟 Building Windows executable..."
-~/.local/bin/pyinstaller --onefile --name memAI-windows.exe memai.py
-
 echo ""
-echo "✅ Build complete!"
+echo "✅ Linux build complete!"
 echo ""
-echo "📦 Executables created:"
+echo "📦 Executable created:"
 echo "  - dist/memAI-linux      (Linux standalone executable)"
-echo "  - dist/memAI-windows.exe (Windows standalone executable)"
 echo ""
 echo "🎯 Usage:"
-echo "  Linux:   ./dist/memAI-linux"
-echo "  Windows: .\\dist\\memAI-windows.exe"
+echo "  ./dist/memAI-linux"
 echo ""
-echo "📁 Files are standalone - no Python installation required!"
-echo "💾 Size: ~10-15MB each (includes Python runtime)"
+echo "📁 File is standalone - no Python installation required!"
+echo "💾 Size: ~8MB (includes Python runtime)"
+echo ""
+echo "🪟 For Windows:"
+echo "  Windows executables must be built on Windows with:"
+echo "  pip install pyinstaller"
+echo "  pyinstaller --onefile --name memAI-windows.exe memai.py"
