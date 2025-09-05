@@ -255,19 +255,23 @@ class OllamaClient:
         model_lower = model.lower()
         
         if "32k" in model_lower:
-            return 32000
+            context_window = 32000
         elif "16k" in model_lower:
-            return 16000
+            context_window = 16000
         elif "8k" in model_lower:
-            return 8000
+            context_window = 8000
         elif "4k" in model_lower:
-            return 4000
+            context_window = 4000
         elif "7b" in model_lower or "3b" in model_lower:
-            return 4000  # Conservative for smaller models
+            context_window = 4000  # Conservative for smaller models
         elif "14b" in model_lower or "13b" in model_lower:
-            return 8000  # Larger models typically have more context
+            context_window = 8000  # Larger models typically have more context
         else:
-            return 4000  # Safe default
+            context_window = 4000  # Safe default
+        
+        # Safety cap: prevent memory files from becoming too large
+        # Cap at 20k tokens (~500 exchanges, ~2.5MB JSON files max)
+        return min(context_window, 20000)
     
     def ensure_model_loaded(self, model: str) -> bool:
         """Ensure model is loaded in Ollama by sending a test message"""
