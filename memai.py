@@ -14,9 +14,36 @@ import signal
 import hashlib
 import requests
 import threading
+import textwrap
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime
+
+
+def wrap_text(text: str, width: int = 80, indent: str = "") -> str:
+    """Wrap text to specified width while preserving words"""
+    if not text:
+        return ""
+    
+    # Split into paragraphs to preserve intentional line breaks
+    paragraphs = text.split('\n')
+    wrapped_paragraphs = []
+    
+    for paragraph in paragraphs:
+        if paragraph.strip():  # Non-empty paragraph
+            wrapped = textwrap.fill(
+                paragraph.strip(), 
+                width=width,
+                initial_indent=indent,
+                subsequent_indent=indent,
+                break_long_words=False,
+                break_on_hyphens=False
+            )
+            wrapped_paragraphs.append(wrapped)
+        else:  # Empty paragraph (preserve spacing)
+            wrapped_paragraphs.append("")
+    
+    return '\n'.join(wrapped_paragraphs)
 
 
 class TokenEstimator:
@@ -326,7 +353,7 @@ class MemAI:
     """Main memAI application"""
     
     def __init__(self):
-        self.ollama = OllamaClient()
+        self.ollama = None  # Will be initialized after port configuration
         self.memory = MemoryManager()
         self.current_model = None
         self.running = True
@@ -341,12 +368,50 @@ class MemAI:
         self.running = False
         sys.exit(0)
     
+    def _configure_ollama_connection(self):
+        """Configure Ollama connection, asking for port if default fails"""
+        # Try default port first
+        default_url = "http://localhost:11434"
+        test_client = OllamaClient(default_url)
+        
+        if test_client.is_available():
+            self.ollama = test_client
+            return True
+        
+        # Default failed, ask for custom port
+        while True:
+            try:
+                port_input = input("Ollama port (default 11434): ").strip()
+                
+                # Use default if empty
+                if not port_input:
+                    port = 11434
+                else:
+                    port = int(port_input)
+                    if port < 1 or port > 65535:
+                        print("Port must be between 1 and 65535")
+                        continue
+                
+                # Test connection
+                test_url = f"http://localhost:{port}"
+                test_client = OllamaClient(test_url)
+                
+                if test_client.is_available():
+                    self.ollama = test_client
+                    return True
+                else:
+                    print(f"Cannot connect to Ollama on port {port}")
+                    
+            except ValueError:
+                print("Please enter a valid port number")
+            except KeyboardInterrupt:
+                return False
+    
     def start(self):
         """Start the memAI application"""
-        # Check Ollama availability
-        if not self.ollama.is_available():
-            print("Ollama not running")
-            print("Start it with: ollama serve")
+        # Configure Ollama connection
+        if not self._configure_ollama_connection():
+            print("\nCannot connect to Ollama. Make sure it's running with: ollama serve")
             return
         
         # Get available and loaded models
@@ -407,6 +472,11 @@ class MemAI:
                 if not user_input:
                     continue
                 
+                # Display wrapped user input if it's long (more than 60 chars)
+                if len(user_input) > 60:
+                    wrapped_input = wrap_text(user_input, width=78, indent="     ")  # 5 spaces to align with "You: "
+                    print(f"You: {wrapped_input}")
+                
                 # Handle commands
                 if user_input.lower() in ['quit', 'exit', 'bye']:
                     print("Goodbye!")
@@ -428,7 +498,9 @@ class MemAI:
                 response = self._get_ai_response(user_input)
                 
                 if response:
-                    print(f"\n\033[96mmemAI:\033[0m {response}")
+                    # Wrap the response text for better readability
+                    wrapped_response = wrap_text(response, width=78, indent="")
+                    print(f"\n\033[96mmemAI:\033[0m {wrapped_response}")
                     
                     # Save to memory
                     context_window = self.ollama.detect_context_window(self.current_model)
