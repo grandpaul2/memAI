@@ -1,24 +1,3 @@
-from dataclasses import dataclass, asdict
-# Utility functions
-def wrap_text(text: str, width: int = 80, indent: str = "") -> str:
-    """Wrap text to specified width while preserving words"""
-    if not text:
-        return ""
-    paragraphs = text.split('\n')
-    wrapped_paragraphs = []
-    for paragraph in paragraphs:
-        if paragraph.strip():
-            wrapped = textwrap.fill(paragraph, width=width, initial_indent=indent, subsequent_indent=indent)
-            wrapped_paragraphs.append(wrapped)
-        else:
-            wrapped_paragraphs.append("")
-    return '\n'.join(wrapped_paragraphs)
-
-@dataclass
-class Exchange:
-    timestamp: str
-    user: str
-    assistant: str
 #!/usr/bin/env python3
 """
 memAI - AI Assistant with Perfect Memory
@@ -39,35 +18,23 @@ import requests
 import threading
 import textwrap
 import readline
+import re
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime
+from dataclasses import dataclass, asdict
 
 
-def wrap_text(text: str, width: int = 80, indent: str = "") -> str:
-    """Wrap text to specified width while preserving words"""
-    if not text:
-        return ""
-    
-    # Split into paragraphs to preserve intentional line breaks
-    paragraphs = text.split('\n')
-    wrapped_paragraphs = []
-    
-    for paragraph in paragraphs:
-        if paragraph.strip():  # Non-empty paragraph
-            wrapped = textwrap.fill(
-                paragraph.strip(), 
-                width=width,
-                initial_indent=indent,
-                subsequent_indent=indent,
-                break_long_words=False,
-                break_on_hyphens=False
-            )
-            wrapped_paragraphs.append(wrapped)
-        else:  # Empty paragraph (preserve spacing)
-            wrapped_paragraphs.append("")
-    
-    return '\n'.join(wrapped_paragraphs)
+
+
+
+
+
+@dataclass
+class Exchange:
+    timestamp: str
+    user: str
+    assistant: str
 
 
 class TokenEstimator:
@@ -268,7 +235,6 @@ class OllamaClient:
             try:
                 response = self.session.get(f"{self.base_url}/api/version", timeout=5)
                 if response.status_code == 200:
-                    print("[INFO] Ollama is available.")
                     return True
             except requests.exceptions.RequestException as e:
                 print(f"[ERROR] Ollama connection attempt {attempt+1} failed: {e}")
@@ -396,22 +362,33 @@ class MemAI:
         # Setup signal handling for graceful shutdown
         signal.signal(signal.SIGINT, self._handle_shutdown)
         signal.signal(signal.SIGTERM, self._handle_shutdown)
+        
+
     
     def _setup_readline(self):
-        """Configure readline for better input handling"""
+        """Configure readline for cursor movement only (no history on arrows)"""
         try:
-            # Enable arrow keys and history
+            # Basic setup
             readline.set_startup_hook(None)
-            
-            # Set up key bindings for common navigation
-            readline.parse_and_bind("tab: complete")
             readline.parse_and_bind("set editing-mode emacs")
+            readline.parse_and_bind("tab: complete")
             
-            # Enable history
+            # Disable history navigation on up/down arrows
+            readline.parse_and_bind('"\e[A": ""')  # Up arrow does nothing
+            readline.parse_and_bind('"\e[B": ""')  # Down arrow does nothing
+            
+            # Keep horizontal movement working
+            readline.parse_and_bind('"\e[C": forward-char')   # Right arrow
+            readline.parse_and_bind('"\e[D": backward-char')  # Left arrow
+            
+            # Use Ctrl+P/Ctrl+N for history if needed
+            readline.parse_and_bind('"\C-p": previous-history')
+            readline.parse_and_bind('"\C-n": next-history')
+            
+            # Enable history file but don't bind to arrows
             histfile = os.path.join(os.path.expanduser("~"), ".memai_history")
             try:
                 readline.read_history_file(histfile)
-                # Limit history size
                 readline.set_history_length(1000)
             except FileNotFoundError:
                 pass
@@ -572,11 +549,6 @@ class MemAI:
                 if not user_input:
                     continue
                 
-                # Display wrapped user input if it's long (more than 60 chars)
-                if len(user_input) > 60:
-                    wrapped_input = wrap_text(user_input, width=78, indent="     ")  # 5 spaces to align with "You: "
-                    print(f"You: {wrapped_input}")
-                
                 # Handle commands
                 if user_input.lower() in ['quit', 'exit', 'bye']:
                     print("Goodbye!")
@@ -601,8 +573,8 @@ class MemAI:
                 response = self._get_ai_response(user_input)
                 
                 if response:
-                    # Wrap the response text for better readability
-                    wrapped_response = wrap_text(response, width=78, indent="")
+                    # Wrap bot response to 70 characters (5 chars less than your 75-char terminal)
+                    wrapped_response = textwrap.fill(response, width=70, break_long_words=False, break_on_hyphens=False)
                     print(f"\n\033[96mmemAI:\033[0m {wrapped_response}")
                     
                     # Save to memory
