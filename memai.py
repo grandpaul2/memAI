@@ -6,6 +6,8 @@ A focused chat application that excels at conversation memory management.
 Each AI model gets its own conversation history with smart token budgeting.
 """
 
+__version__ = "1.1.0"
+
 import sys
 import os
 import json
@@ -553,6 +555,9 @@ class MemAI:
                 elif user_input.lower() == 'help':
                     self._show_help()
                     continue
+                elif user_input.lower() == 'version':
+                    print(f"\nmemAI version {__version__}")
+                    continue
                 elif user_input.lower().startswith('model '):
                     self._handle_model_command(user_input)
                     continue
@@ -614,6 +619,7 @@ class MemAI:
         """Show available commands"""
         print("\nCommands:")
         print("  help     - Show this help")
+        print("  version  - Show memAI version")
         print("  model    - Show current model")
         print("  stats    - Show conversation stats")
         print("  clear    - Clear conversation history")

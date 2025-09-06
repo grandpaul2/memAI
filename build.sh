@@ -9,17 +9,17 @@ echo "🧹 Cleaning previous builds..."
 rm -rf build/ dist/ *.spec
 
 # Build Linux executable
-echo "🐧 Building Linux executable..."
-~/.local/bin/pyinstaller --onefile --name memAI-linux memai.py
+echo "🐧 Building Linux executable (v1.1.0)..."
+~/.local/bin/pyinstaller --onefile --name memAI-v1.1.0-linux-x64 memai.py
 
 echo ""
 echo "✅ Linux build complete!"
 echo ""
 echo "📦 Executable created:"
-echo "  - dist/memAI-linux      (Linux standalone executable)"
+echo "  - dist/memAI-v1.1.0-linux-x64      (Linux standalone executable)"
 echo ""
 echo "🎯 Usage:"
-echo "  ./dist/memAI-linux"
+echo "  ./dist/memAI-v1.1.0-linux-x64"
 echo ""
 echo "📁 File is standalone - no Python installation required!"
 echo "💾 Size: ~8MB (includes Python runtime)"
