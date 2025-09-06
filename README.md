@@ -25,6 +25,7 @@ python3 memai.py
 ## Commands
 
 - `help` - Show available commands
+- `version` - Show memAI version
 - `model` - Switch AI model
 - `stats` - Show conversation statistics
 - `clear` - Clear conversation history
