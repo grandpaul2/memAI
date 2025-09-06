@@ -368,8 +368,30 @@ class MemAI:
         self.running = False
         sys.exit(0)
     
+    def _save_port_to_code(self, port: int):
+        """Save the new port by rewriting it in the source code"""
+        try:
+            # Read current file
+            with open(__file__, 'r') as f:
+                content = f.read()
+            
+            # Replace the default port in OllamaClient.__init__
+            old_line = 'def __init__(self, base_url: str = "http://localhost:11434"):'
+            new_line = f'def __init__(self, base_url: str = "http://localhost:{port}"):'
+            
+            if old_line in content:
+                content = content.replace(old_line, new_line)
+                
+                # Write back to file
+                with open(__file__, 'w') as f:
+                    f.write(content)
+                print(f"Port {port} saved for future use.")
+            
+        except Exception as e:
+            print(f"Could not save port (continuing anyway): {e}")
+    
     def _configure_ollama_connection(self):
-        """Configure Ollama connection, asking for port if default fails"""
+        """Configure Ollama connection with friendly interface"""
         # Try default port first
         default_url = "http://localhost:11434"
         test_client = OllamaClient(default_url)
@@ -378,32 +400,48 @@ class MemAI:
             self.ollama = test_client
             return True
         
-        # Default failed, ask for custom port
+        # Default failed, show friendly message
+        print("Can't connect to Ollama")
+        print("Start Ollama then press RETURN")
+        print("Or enter new port number")
+        
         while True:
             try:
-                port_input = input("Ollama port (default 11434): ").strip()
+                user_input = input("> ").strip()
                 
-                # Use default if empty
-                if not port_input:
-                    port = 11434
-                else:
-                    port = int(port_input)
+                # Empty input - retry default port
+                if not user_input:
+                    test_client = OllamaClient(default_url)
+                    if test_client.is_available():
+                        self.ollama = test_client
+                        return True
+                    else:
+                        print("Still can't connect. Try starting Ollama or enter port number")
+                        continue
+                
+                # Try as port number
+                try:
+                    port = int(user_input)
                     if port < 1 or port > 65535:
                         print("Port must be between 1 and 65535")
                         continue
-                
-                # Test connection
-                test_url = f"http://localhost:{port}"
-                test_client = OllamaClient(test_url)
-                
-                if test_client.is_available():
-                    self.ollama = test_client
-                    return True
-                else:
-                    print(f"Cannot connect to Ollama on port {port}")
                     
-            except ValueError:
-                print("Please enter a valid port number")
+                    # Test connection
+                    test_url = f"http://localhost:{port}"
+                    test_client = OllamaClient(test_url)
+                    
+                    if test_client.is_available():
+                        self.ollama = test_client
+                        # Save the working port for next time
+                        if port != 11434:
+                            self._save_port_to_code(port)
+                        return True
+                    else:
+                        print(f"Can't connect on port {port}. Try another port or start Ollama")
+                        
+                except ValueError:
+                    print("Please enter a port number or press RETURN")
+                    
             except KeyboardInterrupt:
                 return False
     
