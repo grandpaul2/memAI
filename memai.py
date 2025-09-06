@@ -15,6 +15,7 @@ import hashlib
 import requests
 import threading
 import textwrap
+import readline
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime
@@ -358,9 +359,39 @@ class MemAI:
         self.current_model = None
         self.running = True
         
+        # Setup readline for arrow key support
+        self._setup_readline()
+        
         # Setup signal handling for graceful shutdown
         signal.signal(signal.SIGINT, self._handle_shutdown)
         signal.signal(signal.SIGTERM, self._handle_shutdown)
+    
+    def _setup_readline(self):
+        """Configure readline for better input handling"""
+        try:
+            # Enable arrow keys and history
+            readline.set_startup_hook(None)
+            
+            # Set up key bindings for common navigation
+            readline.parse_and_bind("tab: complete")
+            readline.parse_and_bind("set editing-mode emacs")
+            
+            # Enable history
+            histfile = os.path.join(os.path.expanduser("~"), ".memai_history")
+            try:
+                readline.read_history_file(histfile)
+                # Limit history size
+                readline.set_history_length(1000)
+            except FileNotFoundError:
+                pass
+            
+            # Save history on exit
+            import atexit
+            atexit.register(readline.write_history_file, histfile)
+            
+        except ImportError:
+            # readline not available (Windows without pyreadline)
+            pass
     
     def _handle_shutdown(self, signum, frame):
         """Handle graceful shutdown"""

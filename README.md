@@ -1,4 +1,4 @@
-# memAI - Memory-Enhanced AI Assistant
+# memAI - Local model interface with chat memory
 
 A lightweight, single-file AI assistant with excellent conversation memory management. Built for Ollama local AI models.
 
