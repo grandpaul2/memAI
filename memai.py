@@ -1,3 +1,24 @@
+from dataclasses import dataclass, asdict
+# Utility functions
+def wrap_text(text: str, width: int = 80, indent: str = "") -> str:
+    """Wrap text to specified width while preserving words"""
+    if not text:
+        return ""
+    paragraphs = text.split('\n')
+    wrapped_paragraphs = []
+    for paragraph in paragraphs:
+        if paragraph.strip():
+            wrapped = textwrap.fill(paragraph, width=width, initial_indent=indent, subsequent_indent=indent)
+            wrapped_paragraphs.append(wrapped)
+        else:
+            wrapped_paragraphs.append("")
+    return '\n'.join(wrapped_paragraphs)
+
+@dataclass
+class Exchange:
+    timestamp: str
+    user: str
+    assistant: str
 #!/usr/bin/env python3
 """
 memAI - AI Assistant with Perfect Memory
@@ -53,8 +74,8 @@ class TokenEstimator:
     """Simple, adjustable token estimation"""
     
     def __init__(self):
-        # Starting conservative - easily adjustable during testing
-        self.chars_per_token = 3.0
+        # Allow override via env
+        self.chars_per_token = float(os.environ.get("MEMAI_CHARS_PER_TOKEN", "3.0"))
         
     def estimate_tokens(self, text: str) -> int:
         """Conservative estimation - easily tunable"""
@@ -166,43 +187,34 @@ class MemoryManager:
     def add_exchange(self, model: str, user_input: str, ai_response: str, context_window: int):
         """Add new conversation exchange and manage context window"""
         data = self._load_conversation(model)
-        
-        # Add new exchange
-        exchange = {
-            "timestamp": datetime.now().isoformat(),
-            "user": user_input,
-            "assistant": ai_response
-        }
+        # Add new exchange using dataclass
+        exchange = asdict(Exchange(
+            timestamp=datetime.now().isoformat(),
+            user=user_input,
+            assistant=ai_response
+        ))
         data["exchanges"].append(exchange)
         data["metadata"]["last_updated"] = datetime.now().isoformat()
-        
         # Trim to context window if needed
         self._trim_to_context_window(data, context_window)
-        
         # Save updated conversation
         self._save_conversation(model, data)
     
     def _trim_to_context_window(self, data: Dict, context_window: int):
-        """Keep conversation within token budget"""
+        """Keep conversation within token budget (optimized with per-exchange cache)"""
         exchanges = data["exchanges"]
         if not exchanges:
             return
-        
-        # Always keep the most recent exchange
         if len(exchanges) <= 1:
             return
-        
-        # Estimate tokens and trim from the beginning if needed
+        # Cache token counts per exchange
+        token_counts = [self.token_estimator.estimate_tokens(e.get("user", "")) + self.token_estimator.estimate_tokens(e.get("assistant", "")) for e in exchanges]
         while len(exchanges) > 1:
-            total_tokens = self.token_estimator.estimate_conversation_tokens(exchanges)
-            
-            # Leave room for system message and current exchange (roughly 20% buffer)
+            total_tokens = sum(token_counts)
             if total_tokens <= context_window * 0.8:
                 break
-            
-            # Remove oldest exchange (but keep at least the most recent one)
             exchanges.pop(0)
-        
+            token_counts.pop(0)
         data["exchanges"] = exchanges
     
     def get_context_messages(self, model: str, current_input: str, context_window: int) -> List[Dict]:
@@ -248,36 +260,53 @@ class OllamaClient:
     
     def __init__(self, base_url: str = "http://localhost:11434"):
         self.base_url = base_url
+        self.session = requests.Session()
     
     def is_available(self) -> bool:
-        """Check if Ollama is running"""
-        try:
-            response = requests.get(f"{self.base_url}/api/version", timeout=5)
-            return response.status_code == 200
-        except requests.exceptions.RequestException:
-            return False
+        """Check if Ollama is running (with retry)"""
+        for attempt in range(3):
+            try:
+                response = self.session.get(f"{self.base_url}/api/version", timeout=5)
+                if response.status_code == 200:
+                    print("[INFO] Ollama is available.")
+                    return True
+            except requests.exceptions.RequestException as e:
+                print(f"[ERROR] Ollama connection attempt {attempt+1} failed: {e}")
+                time.sleep(1)
+        return False
     
     def get_available_models(self) -> List[str]:
-        """Get list of available models"""
-        try:
-            response = requests.get(f"{self.base_url}/api/tags", timeout=10)
-            if response.status_code == 200:
-                data = response.json()
-                return [model["name"] for model in data.get("models", [])]
-            return []
-        except requests.exceptions.RequestException:
-            return []
+        """Get list of available models (with retry)"""
+        for attempt in range(3):
+            try:
+                response = self.session.get(f"{self.base_url}/api/tags", timeout=10)
+                if response.status_code == 200:
+                    data = response.json()
+                    return [model["name"] for model in data.get("models", [])]
+            except requests.exceptions.RequestException as e:
+                print(f"[ERROR] Model list attempt {attempt+1} failed: {e}")
+                time.sleep(1)
+        return []
     
     def get_loaded_models(self) -> List[str]:
-        """Get list of currently loaded models"""
-        try:
-            response = requests.get(f"{self.base_url}/api/ps", timeout=10)
-            if response.status_code == 200:
-                data = response.json()
-                return [model["name"] for model in data.get("models", [])]
-            return []
-        except requests.exceptions.RequestException:
-            return []
+        """Get list of currently loaded models (with retry)"""
+        for attempt in range(3):
+            try:
+                response = self.session.get(f"{self.base_url}/api/ps", timeout=10)
+                if response.status_code == 200:
+                    data = response.json()
+                    return [model["name"] for model in data.get("models", [])]
+            except requests.exceptions.RequestException as e:
+                print(f"[ERROR] Loaded model list attempt {attempt+1} failed: {e}")
+                time.sleep(1)
+        return []
+# Unit test stubs (to be implemented)
+# def test_token_estimator():
+#     est = TokenEstimator()
+#     assert est.estimate_tokens("hello world") > 0
+# def test_memory_trim():
+#     mm = MemoryManager()
+#     ...
     
     def detect_context_window(self, model: str) -> int:
         """Detect context window size for model"""
